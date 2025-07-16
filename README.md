@@ -1,5 +1,5 @@
 # skyqr
-光遇身高查询二维码识别
+光遇身高免费查询二维码识别
 
 
 # 身高查询二维码识别接口文档
@@ -124,5 +124,5 @@ curl -G https://height.t1qq.com/free/qrcode \
 - 图片大小建议不超过 1.5MB，超过会自动压缩，最大支持 2MB。
 - 返回的 `height`、`scale`、`current`、`max`、`min`
 
-## 另外免费稳定身高查询站
+## 如查询失败，请前往免费稳定身高查询站
 https://height.t1qq.com
