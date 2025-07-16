@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>光遇身高识别工具</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #4CAF50;
+            background-color: #f9f9f9;
+        }
+        #fileInput {
+            display: none;
+        }
+        #preview {
+            max-width: 100%;
+            margin-top: 15px;
+            display: none;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            margin: 20px auto;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+            display: none;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .close {
+            color: #aaa;
+            position: absolute;
+            right: 16px;
+            top: 10px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>光遇身高识别工具</h1>
+        <!-- 功能说明 -->
+        <p id="desc" style="text-align:center;color:#666;margin-bottom:10px;">本工具用于识别光遇游戏内的身高二维码图片，上传截图后即可查询身高数据。</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>点击或拖拽图片到此处上传</p>
+            <img id="preview" alt="预览图">
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+        <!-- 图片示例按钮 -->
+        <button id="exampleBtn" type="button" style="background:#3498db;margin-top:0;">查询前必看示例</button>
+        
+        <button id="decodeBtn" disabled>查询</button>
+        
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>正在识别中...</p>
+        </div>
+        
+        <div id="result"></div>
+        <!-- 图片示例弹窗 -->
+        <div id="exampleModal" class="modal">
+            <div class="modal-content">
+                <span class="close" id="closeModal">&times;</span>
+                <h3 style="text-align:center;">图片示例</h3>
+                <img src="ewm.jpg" alt="示例图片" style="max-width:100%;display:block;margin:0 auto;">
+                <p style="text-align:center;color:#888;font-size:14px;">请上传类似格式的二维码截图</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM元素
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+        const decodeBtn = document.getElementById('decodeBtn');
+        const resultDiv = document.getElementById('result');
+        const loadingDiv = document.getElementById('loading');
+
+        // 点击上传区域触发文件选择
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 拖拽功能
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#4CAF50';
+            uploadArea.style.backgroundColor = '#f0fff0';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#ccc';
+            uploadArea.style.backgroundColor = '#f9f9f9';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#ccc';
+            uploadArea.style.backgroundColor = '#f9f9f9';
+            
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        // 文件选择处理
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                handleFile(fileInput.files[0]);
+            }
+        });
+
+        // 处理选择的文件
+        function handleFile(file) {
+            // 验证文件类型
+            if (!file.type.match('image.*')) {
+                showResult('请上传图片文件', 'error');
+                return;
+            }
+
+            // 显示预览
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                decodeBtn.disabled = false;
+                resultDiv.style.display = 'none';
+                uploadArea.querySelector('p').textContent = file.name;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 识别按钮点击事件
+        decodeBtn.addEventListener('click', async () => {
+            if (!fileInput.files.length) {
+                // 没有图片，弹出示例弹窗
+                exampleModal.style.display = 'block';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            
+            // 显示加载中
+            loadingDiv.style.display = 'block';
+            decodeBtn.disabled = true;
+            resultDiv.style.display = 'none';
+            
+            try {
+                const formData = new FormData();
+                formData.append('qr_image', file);
+                
+                const response = await fetch('https://height.t1qq.com/free/qrcode', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const d = data.data;
+                    const html = `
+                        <strong>查询成功：</strong><br>
+                        身高值：<b>${d.height}</b><br>
+                        体型值：<b>${d.scale}</b><br>
+                        当前身高值：<b>${d.current}</b><br>
+                        最高值：<b>${d.max}</b><br>
+                        最矮值：<b>${d.min}</b>
+                    `;
+                    showResult(html, 'success');
+                } else {
+                    showResult(`查询失败: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(`请求出错: ${error.message}`, 'error');
+            } finally {
+                loadingDiv.style.display = 'none';
+                decodeBtn.disabled = false;
+            }
+        });
+
+        // 显示结果
+        function showResult(message, type) {
+            resultDiv.innerHTML = message;
+            resultDiv.className = type;
+            resultDiv.style.display = 'block';
+            
+            // 如果是成功结果，添加复制按钮
+            if (type === 'success') {
+                const copyBtn = document.createElement('button');
+                copyBtn.textContent = '复制内容';
+                copyBtn.style.marginTop = '10px';
+                copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(message.replace(/<[^>]*>/g, ''))
+                        .then(() => alert('已复制到剪贴板'))
+                        .catch(err => console.error('复制失败:', err));
+                };
+                resultDiv.appendChild(document.createElement('br'));
+                resultDiv.appendChild(copyBtn);
+            }
+        }
+
+        // 图片示例弹窗逻辑
+        const exampleBtn = document.getElementById('exampleBtn');
+        const exampleModal = document.getElementById('exampleModal');
+        const closeModal = document.getElementById('closeModal');
+        exampleBtn.onclick = function() {
+            exampleModal.style.display = 'block';
+        };
+        closeModal.onclick = function() {
+            exampleModal.style.display = 'none';
+        };
+        window.onclick = function(event) {
+            if (event.target === exampleModal) {
+                exampleModal.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>
